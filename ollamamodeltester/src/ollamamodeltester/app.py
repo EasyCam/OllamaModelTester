@@ -44,7 +44,7 @@ class ModelTestWorker(QThread):
     progress_updated = Signal(int)
     test_completed = Signal(dict)
     log_updated = Signal(str)
-    
+    status_updated = Signal(str)  # 新增：用于更新状态栏的信号
     def __init__(self, models: List[str], scenarios: List[TestScenario], test_inputs: List[str], ollama_client):
         super().__init__()
         self.models = models
@@ -61,6 +61,9 @@ class ModelTestWorker(QThread):
             for scenario in self.scenarios:
                 for test_input in self.test_inputs:
                     try:
+                        # 发送状态更新
+                        status_msg = f"正在测试: {model} | 场景: {scenario.name} | 进度: {completed+1}/{total_tests}"
+                        self.status_updated.emit(status_msg)
                         self.log_updated.emit(f"测试模型: {model}, 场景: {scenario.name}")
                         result = self.run_single_test(model, scenario, test_input)
                         self.results.append(result)
@@ -630,6 +633,7 @@ class OllamaModelTester(QtWidgets.QMainWindow):
         self.test_worker.progress_updated.connect(self.update_progress)
         self.test_worker.test_completed.connect(self.on_test_completed)
         self.test_worker.log_updated.connect(self.log_message)
+        self.test_worker.status_updated.connect(self.update_status)  # 新增：连接状态更新信号
         
         self.test_worker.start()
         
@@ -637,7 +641,7 @@ class OllamaModelTester(QtWidgets.QMainWindow):
         self.start_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
         self.progress_bar.setValue(0)
-        self.statusBar().showMessage("测试进行中...")
+        self.statusBar().showMessage("准备开始测试...")
         self.log_message("开始批量测试...")
     
 
@@ -665,7 +669,11 @@ class OllamaModelTester(QtWidgets.QMainWindow):
     def update_progress(self, value: int):
         """更新进度条"""
         self.progress_bar.setValue(value)
-    
+
+    def update_status(self, status_message: str):
+        """更新状态栏显示"""
+        self.statusBar().showMessage(status_message)
+
     def on_test_completed(self, data: Dict[str, Any]):
         """测试完成回调"""
         results = data['results']
