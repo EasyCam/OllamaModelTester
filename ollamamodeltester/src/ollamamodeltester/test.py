@@ -12,9 +12,9 @@ import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-if sys.platform.startswith('win'):
-    import os
-    os.system('chcp 65001')  # 设置控制台为UTF-8编码
+# if sys.platform.startswith('win'):
+#     import os
+#     os.system('chcp 65001')  # 设置控制台为UTF-8编码
 
 from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtCore import QThread, Signal, QTimer
@@ -241,15 +241,16 @@ class ModelTestWorker(QThread):
         try:
             self.log_updated.emit(f"执行: {' '.join(args[:4])} [prompt]")
             # 根据系统环境选择合适的编码
-            import locale
-            system_encoding = locale.getpreferredencoding()
+            # import locale
+            # system_encoding = locale.getpreferredencoding()
             
-            # Windows系统通常使用gbk，其他系统使用utf-8
-            if sys.platform.startswith('win'):
-                encoding = 'gbk'
-            else:
-                encoding = 'utf-8'
-                
+            # # Windows系统通常使用gbk，其他系统使用utf-8
+            # if sys.platform.startswith('win'):
+            #     encoding = 'gbk'
+            # else:
+            #     encoding = 'utf-8'
+            
+            encoding = 'utf-8'
             proc = subprocess.run(args, capture_output=True, text=True, 
                                 encoding=encoding, errors='replace', timeout=300)
         except subprocess.TimeoutExpired:
