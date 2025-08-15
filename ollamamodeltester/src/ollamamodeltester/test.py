@@ -447,10 +447,17 @@ class MatplotlibWidget(QWidget):
         fig.subplots_adjust(hspace=0.4, wspace=0.3)
         
         try:
-            # 1. 模型-任务评分矩阵热力图
+            # 1. 模型-任务评分可视化（用颜色深浅表示分数）
             ax1 = fig.add_subplot(241)
             if 'self_score' in results_df.columns and 'model' in results_df.columns and 'scenario' in results_df.columns:
-                # 创建数据透视表：行为任务，列为模型，值为平均自评分
+                # 获取所有模型和任务
+                models = results_df['model'].unique()
+                scenarios = results_df['scenario'].unique()
+                
+                # 为每个任务分配一种基础颜色
+                base_colors = ['red', 'blue', 'green', 'orange']  # 四种基础颜色
+                
+                # 计算每个模型在每个任务上的平均分
                 pivot_table = results_df.pivot_table(
                     values='self_score', 
                     index='scenario', 
@@ -458,30 +465,66 @@ class MatplotlibWidget(QWidget):
                     aggfunc='mean'
                 )
                 
-                # 绘制热力图
-                import matplotlib.pyplot as plt
-                im = ax1.imshow(pivot_table.values, cmap='RdYlGn', aspect='auto', vmin=0, vmax=10)
+                # 设置柱状图的宽度和位置
+                bar_width = 0.8 / len(scenarios)  # 每个任务的柱子宽度
+                x_positions = range(len(models))  # 模型的x位置
                 
-                # 设置坐标轴标签
-                ax1.set_xticks(range(len(pivot_table.columns)))
-                ax1.set_yticks(range(len(pivot_table.index)))
-                ax1.set_xticklabels(pivot_table.columns, rotation=45, ha='right', fontsize=8)
-                ax1.set_yticklabels(pivot_table.index, fontsize=8)
+                # 为每个任务绘制柱状图
+                for i, scenario in enumerate(scenarios):
+                    if i < len(base_colors):
+                        base_color = base_colors[i]
+                        
+                        # 获取该任务在所有模型上的分数
+                        scores = []
+                        colors = []
+                        
+                        for model in models:
+                            if model in pivot_table.columns and scenario in pivot_table.index:
+                                score = pivot_table.loc[scenario, model]
+                                if not pd.isna(score):
+                                    scores.append(score)
+                                    # 根据分数计算颜色深浅（分数越高颜色越深）
+                                    alpha = max(0.3, min(1.0, score / 10.0))  # 透明度范围0.3-1.0
+                                    colors.append((base_color, alpha))
+                                else:
+                                    scores.append(0)
+                                    colors.append((base_color, 0.1))
+                            else:
+                                scores.append(0)
+                                colors.append((base_color, 0.1))
+                        
+                        # 计算每个任务柱子的x位置
+                        x_offset = [x + (i - len(scenarios)/2 + 0.5) * bar_width for x in x_positions]
+                        
+                        # 绘制柱状图
+                        bars = ax1.bar(x_offset, scores, bar_width, 
+                                       label=scenario, alpha=0.8)
+                        
+                        # 为每个柱子设置颜色
+                        import matplotlib.colors as mcolors
+                        for bar, (color_name, alpha) in zip(bars, colors):
+                            # 将颜色名称转换为RGB，然后应用透明度
+                            rgb = mcolors.to_rgb(color_name)
+                            # 通过混合白色来实现深浅效果
+                            lightness = 1 - alpha  # alpha越大，lightness越小，颜色越深
+                            final_color = tuple(rgb[j] * (1 - lightness) + lightness for j in range(3))
+                            bar.set_color(final_color)
+                        
+                        # 在柱子上显示分数
+                        for x, score in zip(x_offset, scores):
+                            if score > 0:
+                                ax1.text(x, score + 0.1, f'{score:.1f}', 
+                                       ha='center', va='bottom', fontsize=7, weight='bold')
                 
-                # 在每个格子中显示数值
-                for i in range(len(pivot_table.index)):
-                    for j in range(len(pivot_table.columns)):
-                        value = pivot_table.iloc[i, j]
-                        if not pd.isna(value):
-                            text_color = 'white' if value < 5 else 'black'
-                            ax1.text(j, i, f'{value:.1f}', ha='center', va='center', 
-                                    color=text_color, fontsize=8, weight='bold')
+                # 设置坐标轴
+                ax1.set_xticks(x_positions)
+                ax1.set_xticklabels(models, rotation=45, ha='right', fontsize=8)
+                ax1.set_ylabel('评分', fontsize=8)
+                ax1.set_ylim(0, 11)  # 设置y轴范围0-11
+                ax1.legend(fontsize=7, loc='upper right')
+                ax1.grid(True, alpha=0.3)
                 
-                # 添加颜色条
-                cbar = plt.colorbar(im, ax=ax1, shrink=0.8)
-                cbar.set_label('评分', rotation=270, labelpad=15, fontsize=8)
-                
-            ax1.set_title('模型-任务评分矩阵', fontsize=10)
+            ax1.set_title('模型-任务评分对比', fontsize=10)
             
             # 2. load duration 对比
             ax2 = fig.add_subplot(242)
