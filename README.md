@@ -30,17 +30,9 @@ A comprehensive graphical interface tool for testing and comparing local Large L
    ```bash
    git clone https://github.com/EasyCam/OllamaModelTester.git
    cd OllamaModelTester
-   ```
-
-3. **Install Dependencies**
-   ```bash
-   pip install PySide6 ollama matplotlib pandas numpy scipy seaborn scikit-learn requests
-   ```
-
-4. **Run Application**
-   ```bash
+   pip install -r requirements.txt
    cd ollamamodeltester
-   python -m src.ollamamodeltester.app
+   briefcase dev
    ```
 
 ## Usage

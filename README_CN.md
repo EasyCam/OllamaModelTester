@@ -30,17 +30,9 @@
    ```bash
    git clone https://github.com/EasyCam/OllamaModelTester.git
    cd OllamaModelTester
-   ```
-
-3. **安装依赖**
-   ```bash
-   pip install PySide6 ollama matplotlib pandas numpy scipy seaborn scikit-learn requests
-   ```
-
-4. **运行应用程序**
-   ```bash
+   pip install -r requirements.txt
    cd ollamamodeltester
-   python -m src.ollamamodeltester.app
+   briefcase dev
    ```
 
 ## 使用方法

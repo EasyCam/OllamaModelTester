@@ -1,0 +1,10 @@
+PySide6
+ollama
+matplotlib
+pandas
+numpy
+scipy
+seaborn
+scikit-learn
+requests
+briefcase
