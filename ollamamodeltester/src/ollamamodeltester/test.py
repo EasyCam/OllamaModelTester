@@ -447,15 +447,15 @@ class MatplotlibWidget(QWidget):
         fig.subplots_adjust(hspace=0.4, wspace=0.3)
         
         try:
-            # 1. 模型-任务评分可视化（用颜色深浅表示分数）
+            # 1. 模型-任务评分堆叠柱状图
             ax1 = fig.add_subplot(241)
             if 'self_score' in results_df.columns and 'model' in results_df.columns and 'scenario' in results_df.columns:
                 # 获取所有模型和任务
                 models = results_df['model'].unique()
                 scenarios = results_df['scenario'].unique()
                 
-                # 为每个任务分配一种基础颜色
-                base_colors = ['red', 'blue', 'green', 'orange']  # 四种基础颜色
+                # 为每个任务分配一种颜色
+                colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A']  # 四种不同的颜色
                 
                 # 计算每个模型在每个任务上的平均分
                 pivot_table = results_df.pivot_table(
@@ -465,66 +465,63 @@ class MatplotlibWidget(QWidget):
                     aggfunc='mean'
                 )
                 
-                # 设置柱状图的宽度和位置
-                bar_width = 0.8 / len(scenarios)  # 每个任务的柱子宽度
-                x_positions = range(len(models))  # 模型的x位置
+                # 准备堆叠数据
+                x_positions = range(len(models))
+                bottom_values = [0] * len(models)  # 用于堆叠的底部值
                 
-                # 为每个任务绘制柱状图
+                # 为每个任务创建堆叠层
                 for i, scenario in enumerate(scenarios):
-                    if i < len(base_colors):
-                        base_color = base_colors[i]
-                        
+                    if i < len(colors):
                         # 获取该任务在所有模型上的分数
                         scores = []
-                        colors = []
-                        
                         for model in models:
                             if model in pivot_table.columns and scenario in pivot_table.index:
                                 score = pivot_table.loc[scenario, model]
                                 if not pd.isna(score):
                                     scores.append(score)
-                                    # 根据分数计算颜色深浅（分数越高颜色越深）
-                                    alpha = max(0.3, min(1.0, score / 10.0))  # 透明度范围0.3-1.0
-                                    colors.append((base_color, alpha))
                                 else:
                                     scores.append(0)
-                                    colors.append((base_color, 0.1))
                             else:
                                 scores.append(0)
-                                colors.append((base_color, 0.1))
                         
-                        # 计算每个任务柱子的x位置
-                        x_offset = [x + (i - len(scenarios)/2 + 0.5) * bar_width for x in x_positions]
+                        # 绘制堆叠柱状图
+                        bars = ax1.bar(x_positions, scores, 
+                                       bottom=bottom_values,
+                                       color=colors[i],
+                                       label=scenario,
+                                       alpha=0.8,
+                                       edgecolor='white',
+                                       linewidth=0.5)
                         
-                        # 绘制柱状图
-                        bars = ax1.bar(x_offset, scores, bar_width, 
-                                       label=scenario, alpha=0.8)
+                        # 在每个堆叠段的中间显示分数
+                        for j, (x, score, bottom) in enumerate(zip(x_positions, scores, bottom_values)):
+                            if score > 0.5:  # 只在分数足够大时显示文字，避免重叠
+                                text_y = bottom + score / 2
+                                ax1.text(x, text_y, f'{score:.1f}', 
+                                       ha='center', va='center', 
+                                       fontsize=7, weight='bold',
+                                       color='white' if score > 5 else 'black')
                         
-                        # 为每个柱子设置颜色
-                        import matplotlib.colors as mcolors
-                        for bar, (color_name, alpha) in zip(bars, colors):
-                            # 将颜色名称转换为RGB，然后应用透明度
-                            rgb = mcolors.to_rgb(color_name)
-                            # 通过混合白色来实现深浅效果
-                            lightness = 1 - alpha  # alpha越大，lightness越小，颜色越深
-                            final_color = tuple(rgb[j] * (1 - lightness) + lightness for j in range(3))
-                            bar.set_color(final_color)
-                        
-                        # 在柱子上显示分数
-                        for x, score in zip(x_offset, scores):
-                            if score > 0:
-                                ax1.text(x, score + 0.1, f'{score:.1f}', 
-                                       ha='center', va='bottom', fontsize=7, weight='bold')
+                        # 更新底部值，为下一层堆叠做准备
+                        bottom_values = [bottom + score for bottom, score in zip(bottom_values, scores)]
                 
                 # 设置坐标轴
                 ax1.set_xticks(x_positions)
                 ax1.set_xticklabels(models, rotation=45, ha='right', fontsize=8)
-                ax1.set_ylabel('评分', fontsize=8)
-                ax1.set_ylim(0, 11)  # 设置y轴范围0-11
-                ax1.legend(fontsize=7, loc='upper right')
-                ax1.grid(True, alpha=0.3)
+                ax1.set_ylabel('累计评分', fontsize=8)
+                ax1.set_ylim(0, max(bottom_values) * 1.1 if bottom_values else 10)  # 动态设置y轴范围
                 
-            ax1.set_title('模型-任务评分对比', fontsize=10)
+                # 设置图例
+                ax1.legend(fontsize=7, loc='upper left', bbox_to_anchor=(0, 1))
+                ax1.grid(True, alpha=0.3, axis='y')
+                
+                # 在顶部显示总分
+                for x, total in zip(x_positions, bottom_values):
+                    if total > 0:
+                        ax1.text(x, total + max(bottom_values) * 0.02, f'总:{total:.1f}', 
+                               ha='center', va='bottom', fontsize=7, weight='bold')
+                
+            ax1.set_title('模型任务评分堆叠图', fontsize=10)
             
             # 2. load duration 对比
             ax2 = fig.add_subplot(242)
