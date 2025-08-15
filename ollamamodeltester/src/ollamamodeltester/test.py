@@ -24,9 +24,25 @@ from PySide6.QtWidgets import (
 
 import ollama
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib import font_manager as fm
+
+# 全局中文字体与负号设置，避免中文乱码与坐标轴负号显示为方块
+matplotlib.rcParams['font.sans-serif'] = [
+    'Microsoft YaHei',  # Windows 常见
+    'SimHei',           # 黑体
+    'STHeiti',          # macOS 常见
+    'PingFang SC',      # macOS 常见
+    'WenQuanYi Zen Hei',
+    'Noto Sans CJK SC',
+    'Arial Unicode MS',
+    'DejaVu Sans'
+]
+matplotlib.rcParams['axes.unicode_minus'] = False
+
 import requests
 import os
 import subprocess
@@ -118,24 +134,27 @@ class ModelTestWorker(QThread):
                 )
             
             output = ""
-            # 逐块读取流
+            # 逐块读取流（严格只取 message.content）
             for chunk in stream:
                 try:
+                    piece = ""
                     if isinstance(chunk, dict):
-                        msg = chunk.get('message') or {}
-                        piece = msg.get('content', '')
-                        if piece:
-                            output += piece
-                            # 实时推送到UI
-                            self.stream_updated.emit(f"[{model} | {scenario.name}] {piece}")
+                        msg = chunk.get('message')
+                        if isinstance(msg, dict):
+                            piece = msg.get('content', '') or ''
                     else:
-                        # 不同实现下可能直接返回字符串
-                        s = str(chunk)
-                        if s:
-                            output += s
-                            self.stream_updated.emit(f"[{model} | {scenario.name}] {s}")
+                        # 兼容对象类型：chunk.message.content
+                        msg = getattr(chunk, "message", None)
+                        if msg is not None:
+                            if isinstance(msg, dict):
+                                piece = msg.get('content', '') or ''
+                            else:
+                                piece = getattr(msg, "content", "") or ""
+                    
+                    if piece:
+                        output += piece
+                        self.stream_updated.emit(piece)
                 except Exception as ie:
-                    # 单个分片解析失败不应中断整个生成
                     self.log_updated.emit(f"分片解析异常: {ie}")
             
             end_time = time.time()
@@ -914,71 +933,9 @@ class OllamaModelTester(QMainWindow):
         self.log_text.append(f"[{timestamp}] {message}")
     
     def on_stream_updated(self, text: str):
-        """将流式分片直接追加到日志输出（不加时间戳，保证连续性）"""
-        cursor = self.log_text.textCursor()
-        cursor.movePosition(QtGui.QTextCursor.End)
-        cursor.insertPlainText(text)
-        self.log_text.setTextCursor(cursor)
-        self.log_text.ensureCursorVisible()
-    
-    def show_about(self):
-        """显示关于对话框"""
-        QMessageBox.about(self, "关于", 
-            "Ollama 本地大语言模型测试工具\n\n"
-            "功能特点:\n"
-            "• 多模型批量测试\n"
-            "• 自然语言转代码\n"
-            "• 中英文互译\n"
-            "• 代码解释\n"
-            "• 技术问答\n"
-            "• 性能可视化\n"
-            "• CSV数据导出\n\n"
-            "支持 Briefcase 和直接 Python 运行")
-    
-    def closeEvent(self, event):
-        """应用关闭事件"""
-        if self.test_worker and self.test_worker.isRunning():
-            reply = QMessageBox.question(
-                self, "确认退出", "测试正在进行中，确定要退出吗？",
-                QMessageBox.Yes | QMessageBox.No
-            )
-            if reply == QMessageBox.Yes:
-                self.test_worker.stop()
-                self.test_worker.wait(2000)
-                event.accept()
-            else:
-                event.ignore()
-        else:
-            event.accept()
-            
-        reply = QMessageBox.question(
-            self, "确认", "确定要清空所有结果吗？",
-            QMessageBox.Yes | QMessageBox.No
-        )
-        
-        if reply == QMessageBox.Yes:
-            self.results_data.clear()
-            self.results_table.setRowCount(0)
-            self.chart_widget.figure.clear()
-            self.chart_widget.canvas.draw()
-            self.update_stats()
-            self.log_message("结果已清空")
-    
-    def clear_log(self):
-        """清空日志"""
-        self.log_text.clear()
-    
-    def log_message(self, message: str):
-        """添加日志消息"""
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.log_text.append(f"[{timestamp}] {message}")
-    
-    def on_stream_updated(self, text: str):
-        """将流式分片直接追加到日志输出（不加时间戳，保证连续性）"""
-        cursor = self.log_text.textCursor()
-        cursor.movePosition(QtGui.QTextCursor.End)
-        cursor.insertPlainText(text)
-        self.log_text.setTextCursor(cursor)
+        """将流式分片直接追加到日志（只包含模型生成的内容，不含任何前缀/时间戳）"""
+        self.log_text.moveCursor(QtGui.QTextCursor.End)
+        self.log_text.insertPlainText(text)
         self.log_text.ensureCursorVisible()
     
     def show_about(self):
