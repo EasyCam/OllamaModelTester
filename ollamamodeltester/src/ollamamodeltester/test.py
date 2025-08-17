@@ -305,19 +305,18 @@ class ModelTestWorker(QThread):
             return None
 
         # 解析关键指标 - 修复正则表达式以匹配实际的Ollama输出格式
-        prompt_eval_count = find_int([r"prompt eval count:\s*(\d+)"], stderr_text)
-        eval_count = find_int([r"eval count:\s*(\d+)"], stderr_text)
+        prompt_eval_count = find_int([r"(?m)^\s*(?:\[[^\]]+\]\s*)?prompt eval count:\s*(\d+)"], stderr_text)
+        eval_count = find_int([r"(?m)^\s*(?:\[[^\]]+\]\s*)?eval count:\s*(\d+)"], stderr_text)
         
-        # 修复rate解析 - 匹配 "prompt eval rate: 163.64 tokens/s" 格式
-        # 修复rate解析 - 使用行首锚并允许可选时间戳，避免“eval rate”匹配到“prompt eval rate”
+        # 修复rate解析 - 匹配并锚定行首，避免误匹配
         prompt_eval_rate = find_float([r"(?m)^\s*(?:\[[^\]]+\]\s*)?prompt eval rate:\s*([\d\.]+)\s*tokens/s"], stderr_text)
         eval_rate = find_float([r"(?m)^\s*(?:\[[^\]]+\]\s*)?eval rate:\s*([\d\.]+)\s*tokens/s"], stderr_text)
         
-        # 修复duration解析 - 匹配具体的duration格式
-        total_duration = find_str([r"total duration:\s*([^\n\r]+)"], stderr_text)
-        load_duration = find_str([r"load duration:\s*([^\n\r]+)"], stderr_text)
-        prompt_eval_duration = find_str([r"prompt eval duration:\s*([^\n\r]+)"], stderr_text)
-        eval_duration = find_str([r"eval duration:\s*([^\n\r]+)"], stderr_text)
+        # 修复duration解析 - 同样锚定行首并允许可选的时间戳
+        total_duration = find_str([r"(?m)^\s*(?:\[[^\]]+\]\s*)?total duration:\s*([^\n\r]+)"], stderr_text)
+        load_duration = find_str([r"(?m)^\s*(?:\[[^\]]+\]\s*)?load duration:\s*([^\n\r]+)"], stderr_text)
+        prompt_eval_duration = find_str([r"(?m)^\s*(?:\[[^\]]+\]\s*)?prompt eval duration:\s*([^\n\r]+)"], stderr_text)
+        eval_duration = find_str([r"(?m)^\s*(?:\[[^\]]+\]\s*)?eval duration:\s*([^\n\r]+)"], stderr_text)
         ttft_str = find_str([r"(?:time\s+to\s+first\s+token|first\s+token):\s*([^\n\r]+)"], stderr_text)
 
         # 转换时间格式
