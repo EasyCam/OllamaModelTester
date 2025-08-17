@@ -252,7 +252,7 @@ class ModelTestWorker(QThread):
             
             encoding = 'utf-8'
             proc = subprocess.run(args, capture_output=True, text=True, 
-                                encoding=encoding, errors='replace', timeout=300)
+                                encoding=encoding, errors='replace')
         except subprocess.TimeoutExpired:
             raise RuntimeError("ollama命令执行超时(300秒)")
         
