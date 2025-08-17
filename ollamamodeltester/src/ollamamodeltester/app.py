@@ -152,7 +152,9 @@ class ModelTestWorker(QThread):
             output = verbose_result['output']
             
             # 使用CLI返回的准确指标
-            duration = verbose_result.get('total_duration_sec', end_time - start_time)
+            duration = verbose_result.get('total_duration_sec')
+            if not isinstance(duration, (int, float)):
+                duration = end_time - start_time
             prompt_tokens = verbose_result.get('prompt_tokens', 0)
             completion_tokens = verbose_result.get('completion_tokens', 0)
             total_tokens = verbose_result.get('total_tokens', prompt_tokens + completion_tokens)
@@ -161,17 +163,20 @@ class ModelTestWorker(QThread):
             prompt_eval_rate = verbose_result.get('prompt_eval_rate_tps')
             eval_rate = verbose_result.get('eval_rate_tps')
             
-            # 如果CLI没有提供eval_rate，尝试计算
-            if eval_rate is None and completion_tokens > 0 and duration > 0:
-                eval_duration = verbose_result.get('eval_duration_sec', duration)
-                eval_rate = completion_tokens / eval_duration if eval_duration > 0 else 0
+            # 如果CLI没有提供eval_rate，尝试计算（仅在数值有效时）
+            if eval_rate is None and isinstance(completion_tokens, (int, float)) and completion_tokens > 0:
+                eval_duration = verbose_result.get('eval_duration_sec')
+                if not isinstance(eval_duration, (int, float)) or eval_duration <= 0:
+                    eval_duration = duration if isinstance(duration, (int, float)) else None
+                if isinstance(eval_duration, (int, float)) and eval_duration > 0:
+                    eval_rate = completion_tokens / eval_duration
             
-            # 立即记录获得的verbose数据
+            # 立即记录获得的verbose数据（安全格式化）
             self.log_updated.emit(f"获得verbose数据:")
             self.log_updated.emit(f"  prompt_tokens: {prompt_tokens}")
             self.log_updated.emit(f"  completion_tokens: {completion_tokens}")
-            self.log_updated.emit(f"  eval_rate: {eval_rate:.2f} tokens/s")
-            self.log_updated.emit(f"  duration: {duration:.2f}s")
+            self.log_updated.emit(f"  eval_rate: {eval_rate:.2f} tokens/s" if isinstance(eval_rate, (int, float)) else "  eval_rate: N/A")
+            self.log_updated.emit(f"  duration: {duration:.2f}s" if isinstance(duration, (int, float)) else "  duration: N/A")
             
             # 模型自评分
             self_score = self.get_self_evaluation(model, scenario, test_input, output)
