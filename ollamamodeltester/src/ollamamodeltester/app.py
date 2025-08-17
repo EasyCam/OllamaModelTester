@@ -309,8 +309,8 @@ class ModelTestWorker(QThread):
         eval_count = find_int([r"eval count:\s*(\d+)"], stderr_text)
         
         # 修复rate解析 - 匹配 "prompt eval rate: 163.64 tokens/s" 格式
-        prompt_eval_rate = find_float([r"prompt eval rate:\s*([\d\.]+)\s*tokens/s"], stderr_text)
-        eval_rate = find_float([r"eval rate:\s*([\d\.]+)\s*tokens/s"], stderr_text)
+        prompt_eval_rate = find_float([r"(?m)^\s*(?:\[[^\]]+\]\s*)?prompt eval rate:\s*([\d\.]+)\s*tokens/s"], stderr_text)
+        eval_rate = find_float([r"(?m)^\s*(?:\[[^\]]+\]\s*)?eval rate:\s*([\d\.]+)\s*tokens/s"], stderr_text)
         
         # 修复duration解析 - 匹配具体的duration格式
         total_duration = find_str([r"total duration:\s*([^\n\r]+)"], stderr_text)
