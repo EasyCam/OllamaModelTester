@@ -265,7 +265,7 @@ def main():
     """主函数"""
     try:
         # 加载和预处理数据
-        df_success = load_and_preprocess_data('ollama_test_results_20250816_112335.csv')
+        df_success = load_and_preprocess_data('ollama_test_results_20250818_044636.csv')
         
         print(f"成功加载数据，共有 {len(df_success)} 条成功测试记录")
         print(f"涉及 {df_success['model'].nunique()} 个模型和 {df_success['scenario'].nunique()} 个场景")

@@ -15,7 +15,7 @@ rcParams['pdf.fonttype'] = 42      # 同时设置PDF字体类型
 rcParams['ps.fonttype'] = 42       # 同时设置PS字体类型
 
 # 读取CSV文件
-df = pd.read_csv('ollama_test_results_20250816_112335.csv')
+df = pd.read_csv('ollama_test_results_20250818_044636.csv')
 
 # 数据预处理
 # 只保留成功的测试结果
